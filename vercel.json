@@ -6,14 +6,5 @@
         "pages/api/**/*.ts": {
             "maxDuration": 10
         }
-    },
-    "env": {
-        "DATABASE_URL": "@database_url",
-        "PASSWORD": "@password"
-    },
-    "build": {
-        "env": {
-            "DATABASE_URL": "@database_url"
-        }
     }
 }
