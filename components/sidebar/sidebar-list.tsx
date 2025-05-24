@@ -14,7 +14,7 @@ import { Favorites } from './favorites';
 
 const SideBarList = () => {
     const { t } = useI18n();
-    const { tree, moveItem, mutateItem, initLoaded, collapseAllItems } =
+    const { tree, moveItem, mutateItem, initLoaded, collapseAllItems, genNewId } =
         NoteTreeState.useContainer();
 
     const onExpand = useCallback(
