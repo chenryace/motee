@@ -10,6 +10,7 @@ import useSettingsAPI from 'libs/web/api/settings';
 import dynamic from 'next/dynamic';
 import { useToast } from 'libs/web/hooks/use-toast';
 import DeleteAlert from 'components/editor/delete-alert';
+import EditorState from 'libs/web/state/editor';
 
 const MainEditor = dynamic(() => import('components/editor/main-editor'));
 
@@ -110,12 +111,12 @@ export const EditContainer = () => {
     }, [note?.title, updateTitle]);
 
     return (
-        <>
+        <EditorState.Provider initialState={note}>
             <NoteNav />
             <DeleteAlert />
             <section className="h-full">
                 <MainEditor note={note} />
             </section>
-        </>
+        </EditorState.Provider>
     );
 };
