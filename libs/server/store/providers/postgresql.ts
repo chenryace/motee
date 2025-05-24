@@ -198,36 +198,61 @@ export class StorePostgreSQL extends StoreProvider {
             const content = Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw;
             const fullPath = this.getPath(path);
 
-            // 从metadata中提取ID
-            const metadata = options?.meta || {};
-            const noteId = metadata.id;
+            // 检查是否是笔记路径（需要ID）还是其他数据（如设置，不需要ID）
+            const isNotePath = path.startsWith('notes/');
 
-            if (!noteId) {
-                throw new Error('Note ID is required in metadata');
+            if (isNotePath) {
+                // 笔记数据：从metadata中提取ID
+                const metadata = options?.meta || {};
+                const noteId = metadata.id;
+
+                if (!noteId) {
+                    throw new Error('Note ID is required in metadata for notes');
+                }
+
+                // 创建不包含ID的metadata副本
+                const metadataWithoutId = { ...metadata };
+                delete metadataWithoutId.id;
+
+                await client.query(`
+                    INSERT INTO notes (id, path, content, content_type, metadata, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, NOW())
+                    ON CONFLICT (path)
+                    DO UPDATE SET
+                        content = EXCLUDED.content,
+                        content_type = EXCLUDED.content_type,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = NOW()
+                `, [
+                    noteId,
+                    fullPath,
+                    content,
+                    options?.contentType || 'text/markdown',
+                    JSON.stringify(metadataWithoutId)
+                ]);
+
+                this.logger.debug('Successfully put note:', fullPath, 'with ID:', noteId);
+            } else {
+                // 非笔记数据（如设置）：使用路径作为ID
+                await client.query(`
+                    INSERT INTO notes (id, path, content, content_type, metadata, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, NOW())
+                    ON CONFLICT (path)
+                    DO UPDATE SET
+                        content = EXCLUDED.content,
+                        content_type = EXCLUDED.content_type,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = NOW()
+                `, [
+                    fullPath, // 使用完整路径作为ID
+                    fullPath,
+                    content,
+                    options?.contentType || 'text/markdown',
+                    JSON.stringify(options?.meta || {})
+                ]);
+
+                this.logger.debug('Successfully put non-note object:', fullPath);
             }
-
-            // 创建不包含ID的metadata副本
-            const metadataWithoutId = { ...metadata };
-            delete metadataWithoutId.id;
-
-            await client.query(`
-                INSERT INTO notes (id, path, content, content_type, metadata, updated_at)
-                VALUES ($1, $2, $3, $4, $5, NOW())
-                ON CONFLICT (path)
-                DO UPDATE SET
-                    content = EXCLUDED.content,
-                    content_type = EXCLUDED.content_type,
-                    metadata = EXCLUDED.metadata,
-                    updated_at = NOW()
-            `, [
-                noteId,
-                fullPath,
-                content,
-                options?.contentType || 'text/markdown',
-                JSON.stringify(metadataWithoutId)
-            ]);
-
-            this.logger.debug('Successfully put object:', fullPath, 'with ID:', noteId);
         } catch (error) {
             this.logger.error('Error putting object:', error);
             throw error;
