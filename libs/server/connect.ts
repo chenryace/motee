@@ -58,6 +58,7 @@ export const api = () =>
         onError,
     })
         .use(useError)
+        .use(useStore)
         .use(useSession)
         .use(useCsrf);
 
