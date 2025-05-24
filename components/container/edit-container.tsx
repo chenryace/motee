@@ -1,6 +1,6 @@
 import NoteState from 'libs/web/state/note';
 import { has } from 'lodash';
-import router, { useRouter } from 'next/router';
+import { useRouter } from 'next/router';
 import { useCallback, useEffect } from 'react';
 import NoteTreeState from 'libs/web/state/tree';
 import NoteNav from 'components/note-nav';
@@ -22,7 +22,8 @@ export const EditContainer = () => {
     const { genNewId } = NoteTreeState.useContainer();
     const { fetchNote, abortFindNote, findOrCreateNote, initNote, note } =
         NoteState.useContainer();
-    const { query } = useRouter();
+    const router = useRouter();
+    const { query } = router;
     const pid = query.pid as string;
     const id = query.id as string;
     const isNew = has(query, 'new');
@@ -90,6 +91,7 @@ export const EditContainer = () => {
             toast,
             initNote,
             mutateSettings,
+            router,
         ]
     );
 
