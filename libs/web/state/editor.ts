@@ -77,7 +77,7 @@ const useEditor = (initNote?: NoteModel) => {
         [note]
     );
 
-    // Manual sync to server
+    // Manual sync to server (借鉴旧项目的核心逻辑)
     const syncToServer = useCallback(
         async () => {
             if (!note?.id) return false;
@@ -85,48 +85,43 @@ const useEditor = (initNote?: NoteModel) => {
             const isNew = has(router.query, 'new');
 
             try {
-                // Get the latest version from IndexedDB
+                // 借鉴旧项目：优先使用IndexedDB中的最新数据
                 const localNote = await noteCache.getItem(note.id);
                 const noteToSave = localNote || note;
 
                 if (isNew) {
-                    // For new notes, use existing createNote function
+                    // 借鉴旧项目：创建新笔记时包含完整数据
                     const noteData = {
                         ...noteToSave,
                         pid: (router.query.pid as string) || ROOT_ID
                     };
 
-                    // Use the existing createNote function which handles:
-                    // - Server ID generation and collision checking
-                    // - Database storage
-                    // - Tree structure updates
-                    // - Cache updates
                     const item = await createNote(noteData);
 
                     if (item) {
-                        // Navigate to the note without 'new' query
+                        // 借鉴旧项目：成功后移除?new参数
                         const noteUrl = `/${item.id}`;
                         if (router.asPath !== noteUrl) {
                             await router.replace(noteUrl, undefined, { shallow: true });
                         }
-
-                        toast('New note created and saved to server', 'success');
+                        toast('Note saved to server', 'success');
+                        return true;
                     }
                 } else {
-                    // For existing notes, update on server
+                    // 借鉴旧项目：更新现有笔记
                     const updatedNote = await updateNote(noteToSave);
 
                     if (updatedNote) {
-                        // Update local cache with server response
+                        // 借鉴旧项目：用服务器响应更新本地缓存
                         await noteCache.setItem(updatedNote.id, updatedNote);
                         toast('Note updated on server', 'success');
+                        return true;
                     }
                 }
 
-                return true;
+                return false;
             } catch (error) {
                 toast('Failed to sync to server. Changes saved locally.', 'warning');
-                console.error('Error syncing note to server:', error);
                 return false;
             }
         },

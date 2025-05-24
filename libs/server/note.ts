@@ -7,21 +7,25 @@ import { ServerState } from './connect';
 export const createNote = async (note: NoteModel, state: ServerState) => {
     const { content = '\n', ...meta } = note;
 
-    if (!note.id) {
-        note.id = genId();
+    // 如果前端没有提供ID，生成一个新的
+    let noteId = note.id;
+    if (!noteId) {
+        noteId = genId();
     }
-    while (await state.store.hasObject(getPathNoteById(note.id))) {
-        note.id = genId();
+
+    // 检查ID冲突，如果冲突则生成新ID
+    while (await state.store.hasObject(getPathNoteById(noteId))) {
+        noteId = genId();
     }
 
     const metaWithModel = {
         ...meta,
-        id: note.id,
+        id: noteId, // 使用确定的ID
         date: note.date ?? new Date().toISOString(),
     };
     const metaData = jsonToMeta(metaWithModel);
 
-    await state.store.putObject(getPathNoteById(note.id), content, {
+    await state.store.putObject(getPathNoteById(noteId), content, {
         contentType: 'text/markdown',
         meta: metaData,
     });

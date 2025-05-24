@@ -106,8 +106,12 @@ const useNote = (initData?: NoteModel) => {
             }
 
             result.content = result.content || '\n';
+
+            // 更新缓存和状态
             await noteCache.setItem(result.id, result);
             setNote(result);
+
+            // 添加到树结构
             addItem(result);
 
             return result;

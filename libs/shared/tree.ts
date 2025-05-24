@@ -31,20 +31,26 @@ export interface MovePosition {
 }
 
 function addItem(tree: TreeModel, id: string, pid = ROOT_ID) {
-    tree.items[id] = tree.items[id] || {
+    // 创建树的深拷贝以避免直接修改原对象
+    const newTree = cloneDeep(tree);
+
+    newTree.items[id] = newTree.items[id] || {
         id,
         children: [],
     };
 
-    const parentItem = tree.items[pid];
+    const parentItem = newTree.items[pid];
 
     if (parentItem) {
-        parentItem.children = [...parentItem.children, id];
+        // 确保不重复添加
+        if (!parentItem.children.includes(id)) {
+            parentItem.children = [...parentItem.children, id];
+        }
     } else {
         throw new Error(`Parent ID '${pid}' does not refer to a valid item`);
     }
 
-    return tree;
+    return newTree;
 }
 
 function mutateItem(tree: TreeModel, id: string, data: Partial<TreeItemModel>) {
