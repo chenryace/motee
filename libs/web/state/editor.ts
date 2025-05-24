@@ -37,13 +37,27 @@ const onSearchLink = async (keyword: string) => {
 };
 
 const useEditor = (initNote?: NoteModel) => {
-    const {
-        createNoteWithTitle,
-        updateNote,
-        createNote,
-        note: noteProp,
-    } = NoteState.useContainer();
-    const note = initNote ?? noteProp;
+    // Use initNote if provided, otherwise try to get from NoteState
+    let note = initNote;
+    let createNoteWithTitle, updateNote, createNote;
+
+    try {
+        const noteState = NoteState.useContainer();
+        createNoteWithTitle = noteState.createNoteWithTitle;
+        updateNote = noteState.updateNote;
+        createNote = noteState.createNote;
+
+        // Only use noteState.note if no initNote is provided
+        if (!note) {
+            note = noteState.note;
+        }
+    } catch (error) {
+        // If NoteState is not available, we'll work with just the initNote
+        console.warn('NoteState not available in EditorState, using initNote only');
+        createNoteWithTitle = async () => undefined;
+        updateNote = async () => undefined;
+        createNote = async () => undefined;
+    }
     const {
         ua: { isBrowser },
     } = UIState.useContainer();
