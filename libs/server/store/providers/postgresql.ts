@@ -27,20 +27,24 @@ interface TreeRecord {
 export class StorePostgreSQL extends StoreProvider {
     private pool: Pool;
     private logger = createLogger('store.postgresql');
+    private tablesInitialized = false;
 
     constructor(config: PostgreSQLConfig) {
         super(config);
         this.pool = new Pool({
             connectionString: config.connectionString,
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-            max: 20,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000,
+            max: 1, // Vercel serverless functions work better with fewer connections
+            idleTimeoutMillis: 10000,
+            connectionTimeoutMillis: 10000,
         });
-        this.initializeTables();
     }
 
-    private async initializeTables(): Promise<void> {
+    private async ensureTablesInitialized(): Promise<void> {
+        if (this.tablesInitialized) {
+            return;
+        }
+
         const client = await this.pool.connect();
         try {
             // Create notes table
@@ -73,6 +77,7 @@ export class StorePostgreSQL extends StoreProvider {
                 CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at);
             `);
 
+            this.tablesInitialized = true;
             this.logger.info('Database tables initialized successfully');
         } catch (error) {
             this.logger.error('Failed to initialize database tables:', error);
@@ -89,6 +94,7 @@ export class StorePostgreSQL extends StoreProvider {
     }
 
     async hasObject(path: string): Promise<boolean> {
+        await this.ensureTablesInitialized();
         const client = await this.pool.connect();
         try {
             const result = await client.query(
@@ -111,7 +117,7 @@ export class StorePostgreSQL extends StoreProvider {
                 'SELECT content FROM notes WHERE path = $1',
                 [this.getPath(path)]
             );
-            
+
             if (result.rows.length === 0) {
                 return undefined;
             }
@@ -132,7 +138,7 @@ export class StorePostgreSQL extends StoreProvider {
                 'SELECT metadata FROM notes WHERE path = $1',
                 [this.getPath(path)]
             );
-            
+
             if (result.rows.length === 0) {
                 return undefined;
             }
@@ -161,7 +167,7 @@ export class StorePostgreSQL extends StoreProvider {
                 'SELECT content, metadata, content_type FROM notes WHERE path = $1',
                 [this.getPath(path)]
             );
-            
+
             if (result.rows.length === 0) {
                 return {};
             }
@@ -186,16 +192,17 @@ export class StorePostgreSQL extends StoreProvider {
         options?: ObjectOptions,
         isCompressed?: boolean
     ): Promise<void> {
+        await this.ensureTablesInitialized();
         const client = await this.pool.connect();
         try {
             const content = Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw;
             const fullPath = this.getPath(path);
-            
+
             await client.query(`
                 INSERT INTO notes (path, content, content_type, metadata, updated_at)
                 VALUES ($1, $2, $3, $4, NOW())
-                ON CONFLICT (path) 
-                DO UPDATE SET 
+                ON CONFLICT (path)
+                DO UPDATE SET
                     content = EXCLUDED.content,
                     content_type = EXCLUDED.content_type,
                     metadata = EXCLUDED.metadata,
@@ -241,11 +248,11 @@ export class StorePostgreSQL extends StoreProvider {
         try {
             const fullFromPath = this.getPath(fromPath);
             const fullToPath = this.getPath(toPath);
-            
+
             if (fullFromPath === fullToPath) {
                 // Update metadata only
                 await client.query(`
-                    UPDATE notes 
+                    UPDATE notes
                     SET metadata = $2, content_type = $3, updated_at = NOW()
                     WHERE path = $1
                 `, [
@@ -259,8 +266,8 @@ export class StorePostgreSQL extends StoreProvider {
                     INSERT INTO notes (path, content, content_type, metadata, updated_at)
                     SELECT $2, content, $3, $4, NOW()
                     FROM notes WHERE path = $1
-                    ON CONFLICT (path) 
-                    DO UPDATE SET 
+                    ON CONFLICT (path)
+                    DO UPDATE SET
                         content = EXCLUDED.content,
                         content_type = EXCLUDED.content_type,
                         metadata = EXCLUDED.metadata,
@@ -290,7 +297,7 @@ export class StorePostgreSQL extends StoreProvider {
                 'SELECT data FROM tree_data WHERE id = $1',
                 ['main']
             );
-            
+
             if (result.rows.length === 0) {
                 return null;
             }
@@ -310,8 +317,8 @@ export class StorePostgreSQL extends StoreProvider {
             await client.query(`
                 INSERT INTO tree_data (id, data, updated_at)
                 VALUES ('main', $1, NOW())
-                ON CONFLICT (id) 
-                DO UPDATE SET 
+                ON CONFLICT (id)
+                DO UPDATE SET
                     data = EXCLUDED.data,
                     updated_at = NOW()
             `, [JSON.stringify(treeData)]);
