@@ -198,9 +198,21 @@ export class StorePostgreSQL extends StoreProvider {
             const content = Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw;
             const fullPath = this.getPath(path);
 
+            // 从metadata中提取ID
+            const metadata = options?.meta || {};
+            const noteId = metadata.id;
+
+            if (!noteId) {
+                throw new Error('Note ID is required in metadata');
+            }
+
+            // 创建不包含ID的metadata副本
+            const metadataWithoutId = { ...metadata };
+            delete metadataWithoutId.id;
+
             await client.query(`
-                INSERT INTO notes (path, content, content_type, metadata, updated_at)
-                VALUES ($1, $2, $3, $4, NOW())
+                INSERT INTO notes (id, path, content, content_type, metadata, updated_at)
+                VALUES ($1, $2, $3, $4, $5, NOW())
                 ON CONFLICT (path)
                 DO UPDATE SET
                     content = EXCLUDED.content,
@@ -208,13 +220,14 @@ export class StorePostgreSQL extends StoreProvider {
                     metadata = EXCLUDED.metadata,
                     updated_at = NOW()
             `, [
+                noteId,
                 fullPath,
                 content,
                 options?.contentType || 'text/markdown',
-                JSON.stringify(options?.meta || {})
+                JSON.stringify(metadataWithoutId)
             ]);
 
-            this.logger.debug('Successfully put object:', fullPath);
+            this.logger.debug('Successfully put object:', fullPath, 'with ID:', noteId);
         } catch (error) {
             this.logger.error('Error putting object:', error);
             throw error;
@@ -249,6 +262,14 @@ export class StorePostgreSQL extends StoreProvider {
             const fullFromPath = this.getPath(fromPath);
             const fullToPath = this.getPath(toPath);
 
+            // 从metadata中提取ID
+            const metadata = options.meta || {};
+            const noteId = metadata.id;
+
+            // 创建不包含ID的metadata副本
+            const metadataWithoutId = { ...metadata };
+            delete metadataWithoutId.id;
+
             if (fullFromPath === fullToPath) {
                 // Update metadata only
                 await client.query(`
@@ -257,14 +278,18 @@ export class StorePostgreSQL extends StoreProvider {
                     WHERE path = $1
                 `, [
                     fullFromPath,
-                    JSON.stringify(options.meta || {}),
+                    JSON.stringify(metadataWithoutId),
                     options.contentType || 'text/markdown'
                 ]);
             } else {
                 // Copy to new path
+                if (!noteId) {
+                    throw new Error('Note ID is required in metadata for copy operation');
+                }
+
                 await client.query(`
-                    INSERT INTO notes (path, content, content_type, metadata, updated_at)
-                    SELECT $2, content, $3, $4, NOW()
+                    INSERT INTO notes (id, path, content, content_type, metadata, updated_at)
+                    SELECT $3, $2, content, $4, $5, NOW()
                     FROM notes WHERE path = $1
                     ON CONFLICT (path)
                     DO UPDATE SET
@@ -275,8 +300,9 @@ export class StorePostgreSQL extends StoreProvider {
                 `, [
                     fullFromPath,
                     fullToPath,
+                    noteId,
                     options.contentType || 'text/markdown',
-                    JSON.stringify(options.meta || {})
+                    JSON.stringify(metadataWithoutId)
                 ]);
             }
 
