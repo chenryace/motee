@@ -57,15 +57,27 @@ export const EditContainer = () => {
                     }
                 }
             } else {
-                if (await noteCache.getItem(id)) {
-                    await router.push(`/${id}`, undefined, { shallow: true });
+                // Check if note exists in local cache first
+                const cachedNote = await noteCache.getItem(id);
+                if (cachedNote) {
+                    // If exists in cache, load it
+                    initNote(cachedNote);
                     return;
                 }
 
-                initNote({
+                // Initialize new note for local editing
+                const newNote = {
                     id,
-                    content: '\n',
-                });
+                    title: 'Untitled',
+                    content: '# Untitled\n\nStart writing...',
+                    pid: pid || 'root',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                };
+
+                // Save to IndexedDB immediately
+                await noteCache.setItem(id, newNote);
+                initNote(newNote);
             }
 
             if (!isNew && id !== 'new') {
