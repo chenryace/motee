@@ -13,16 +13,20 @@ import { useEffect } from 'react';
 import { applyCsrf } from 'libs/server/middlewares/csrf';
 import { SSRContext, ssr } from 'libs/server/connect';
 import { applyReset } from 'libs/server/middlewares/reset';
+import NoteTreeState from 'libs/web/state/tree';
 
 const EditNotePage: NextPage<{ tree: TreeModel }> = ({ tree }) => {
     const { ua } = UIState.useContainer();
+    const { genNewId } = NoteTreeState.useContainer();
 
     useEffect(() => {
         if (ua.isMobileOnly) {
-            Router.push('/new')
-                ?.catch((v) => console.error('Error whilst pushing /new route: %O', v));
+            // Generate new ID and navigate directly
+            const newId = genNewId();
+            Router.push(`/${newId}?new`)
+                ?.catch((v) => console.error('Error whilst pushing to new note: %O', v));
         }
-    }, [ua.isMobileOnly]);
+    }, [ua.isMobileOnly, genNewId]);
 
     return (
         <LayoutMain tree={tree}>

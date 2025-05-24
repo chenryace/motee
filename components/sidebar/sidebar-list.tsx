@@ -64,9 +64,11 @@ const SideBarList = () => {
     );
 
     const onCreateNote = useCallback(() => {
-        router.push('/new', undefined, { shallow: true })
+        // Generate new ID and navigate directly
+        const newId = genNewId();
+        router.push(`/${newId}?new`, undefined, { shallow: true })
             .catch((v) => console.error('Error whilst pushing to router: %O', v));
-    }, []);
+    }, [genNewId]);
 
     return (
         <section className="h-full flex text-sm flex-col flex-grow bg-gray-100 overflow-y-auto">
