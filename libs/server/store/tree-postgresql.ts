@@ -57,15 +57,23 @@ export class TreeStorePostgreSQL {
             );
 
             if (result.rows.length === 0) {
-                // Return default tree if none exists and save it
-                return await this.set(DEFAULT_TREE);
+                // Initialize with default tree without recursive call
+                const defaultTree = fixedTree(DEFAULT_TREE);
+                await client.query(`
+                    INSERT INTO tree_data (id, data, updated_at)
+                    VALUES ('main', $1, NOW())
+                `, [JSON.stringify(defaultTree)]);
+
+                this.logger.debug('Initialized default tree');
+                return defaultTree;
             }
 
             const tree = result.rows[0].data as TreeModel;
             return fixedTree(tree);
         } catch (error) {
             this.logger.error('Error getting tree:', error);
-            return DEFAULT_TREE;
+            // Return default tree without saving to avoid infinite recursion
+            return fixedTree(DEFAULT_TREE);
         } finally {
             client.release();
         }
