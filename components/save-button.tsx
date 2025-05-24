@@ -1,8 +1,7 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { Button } from '@material-ui/core';
-import { Save as SaveIcon, CloudUpload as CloudUploadIcon } from '@heroicons/react/outline';
+import { DocumentIcon, UploadIcon } from '@heroicons/react/outline';
 import EditorState from 'libs/web/state/editor';
-import { useHotkeys } from 'react-hotkeys-hook';
 
 interface SaveButtonProps {
     className?: string;
@@ -22,16 +21,23 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
     };
 
     // Add keyboard shortcut Ctrl+S / Cmd+S
-    useHotkeys('ctrl+s,cmd+s', (e) => {
-        e.preventDefault();
-        handleSave();
-    }, { enableOnTags: ['INPUT', 'TEXTAREA'] });
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [handleSave]);
 
     return (
         <Button
             variant="contained"
             color="primary"
-            startIcon={isSaving ? <CloudUploadIcon className="w-4 h-4" /> : <SaveIcon className="w-4 h-4" />}
+            startIcon={isSaving ? <UploadIcon className="w-4 h-4" /> : <DocumentIcon className="w-4 h-4" />}
             onClick={handleSave}
             disabled={isSaving}
             className={className}
