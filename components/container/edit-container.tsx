@@ -58,27 +58,20 @@ export const EditContainer = () => {
                     }
                 }
             } else {
-                // Check if note exists in local cache first
+                // 借鉴旧项目：简单直接的新建笔记逻辑
                 const cachedNote = await noteCache.getItem(id);
                 if (cachedNote) {
-                    // If exists in cache, load it
                     initNote(cachedNote);
                     return;
                 }
 
-                // Initialize new note for local editing
-                const newNote = {
+                // 借鉴旧项目：直接初始化本地笔记，简单有效
+                initNote({
                     id,
-                    title: 'Untitled',
-                    content: '# Untitled\n\nStart writing...',
-                    pid: pid || 'root',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                };
-
-                // Save to IndexedDB immediately
-                await noteCache.setItem(id, newNote);
-                initNote(newNote);
+                    title: '',
+                    content: '\n',
+                    pid: pid || 'root'
+                });
             }
 
             if (!isNew && id !== 'new') {

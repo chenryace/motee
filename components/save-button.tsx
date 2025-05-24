@@ -19,10 +19,13 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const router = useRouter();
 
-    // Check sync status
+    // Check sync status (借鉴旧项目的简单有效逻辑)
     useEffect(() => {
         const checkSyncStatus = async () => {
-            if (!note?.id) return;
+            if (!note?.id) {
+                setSyncStatus('synced');
+                return;
+            }
 
             const isNew = has(router.query, 'new');
             if (isNew) {
@@ -31,8 +34,19 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
             }
 
             try {
+                // 借鉴旧项目：检查本地缓存是否有更新
                 const localNote = await noteCache.getItem(note.id);
-                if (localNote && localNote.updated_at && note.updated_at) {
+
+                if (!localNote) {
+                    setSyncStatus('synced');
+                    if (note.updated_at) {
+                        setLastSyncTime(new Date(note.updated_at));
+                    }
+                    return;
+                }
+
+                // 简单比较：如果有本地缓存且时间戳更新，说明有本地更改
+                if (localNote.updated_at && note.updated_at) {
                     const localTime = new Date(localNote.updated_at);
                     const serverTime = new Date(note.updated_at);
 
@@ -42,9 +56,10 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
                         setSyncStatus('synced');
                         setLastSyncTime(serverTime);
                     }
+                } else {
+                    setSyncStatus('local');
                 }
             } catch (error) {
-                console.error('Error checking sync status:', error);
                 setSyncStatus('error');
             }
         };
