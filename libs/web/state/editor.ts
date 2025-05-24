@@ -66,28 +66,53 @@ const useEditor = (initNote?: NoteModel) => {
     // Manual sync to server
     const syncToServer = useCallback(
         async () => {
-            if (!note?.id) return;
+            if (!note?.id) return false;
 
             const isNew = has(router.query, 'new');
 
             try {
-                if (isNew) {
-                    const noteData = { ...note, pid: (router.query.pid as string) || ROOT_ID };
-                    const item = await createNote(noteData);
-                    const noteUrl = `/${item?.id}`;
+                // Get the latest version from IndexedDB
+                const localNote = await noteCache.getItem(note.id);
+                const noteToSave = localNote || note;
 
-                    if (router.asPath !== noteUrl) {
-                        await router.replace(noteUrl, undefined, { shallow: true });
+                if (isNew) {
+                    // For new notes, use existing createNote function
+                    const noteData = {
+                        ...noteToSave,
+                        pid: (router.query.pid as string) || ROOT_ID
+                    };
+
+                    // Use the existing createNote function which handles:
+                    // - Server ID generation and collision checking
+                    // - Database storage
+                    // - Tree structure updates
+                    // - Cache updates
+                    const item = await createNote(noteData);
+
+                    if (item) {
+                        // Navigate to the note without 'new' query
+                        const noteUrl = `/${item.id}`;
+                        if (router.asPath !== noteUrl) {
+                            await router.replace(noteUrl, undefined, { shallow: true });
+                        }
+
+                        toast('New note created and saved to server', 'success');
                     }
                 } else {
-                    await updateNote(note);
+                    // For existing notes, update on server
+                    const updatedNote = await updateNote(noteToSave);
+
+                    if (updatedNote) {
+                        // Update local cache with server response
+                        await noteCache.setItem(updatedNote.id, updatedNote);
+                        toast('Note updated on server', 'success');
+                    }
                 }
 
-                toast('Note saved successfully', 'success');
                 return true;
             } catch (error) {
-                toast('Failed to save note', 'error');
-                console.error('Error saving note:', error);
+                toast('Failed to sync to server. Changes saved locally.', 'warning');
+                console.error('Error syncing note to server:', error);
                 return false;
             }
         },
@@ -174,9 +199,29 @@ const useEditor = (initNote?: NoteModel) => {
 
     const onEditorChange = useCallback(
         (value: () => string): void => {
+            const content = value();
+
+            // Extract title from content (first line)
+            const lines = content.split('\n');
+            const title = lines[0]?.replace(/^#\s*/, '') || 'Untitled';
+
             // Save to IndexedDB immediately for local persistence
-            saveToIndexedDB({ content: value() })
-                ?.catch((v) => console.error('Error whilst saving to IndexedDB: %O', v));
+            saveToIndexedDB({
+                content,
+                title,
+                updated_at: new Date().toISOString()
+            })?.catch((v) => console.error('Error whilst saving to IndexedDB: %O', v));
+        },
+        [saveToIndexedDB]
+    );
+
+    // Function to handle title changes specifically
+    const onTitleChange = useCallback(
+        (title: string): void => {
+            saveToIndexedDB({
+                title,
+                updated_at: new Date().toISOString()
+            })?.catch((v) => console.error('Error whilst saving title to IndexedDB: %O', v));
         },
         [saveToIndexedDB]
     );
@@ -189,6 +234,7 @@ const useEditor = (initNote?: NoteModel) => {
         onHoverLink,
         getBackLinks,
         onEditorChange,
+        onTitleChange,
         saveToIndexedDB,
         syncToServer,
         backlinks,
