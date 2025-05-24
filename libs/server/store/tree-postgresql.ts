@@ -1,9 +1,37 @@
 import { Pool } from 'pg';
 import { createLogger } from 'libs/server/debugging';
-import { TreeModel, DEFAULT_TREE, ROOT_ID } from 'libs/shared/tree';
+import { TreeModel, DEFAULT_TREE, ROOT_ID, MovePosition, TreeItemModel } from 'libs/shared/tree';
+import TreeActions from 'libs/shared/tree';
+import { filter, forEach, isNil } from 'lodash';
 
 export interface TreeStoreConfig {
     connectionString: string;
+}
+
+/**
+ * Fix tree structure issues
+ * 1. children 有可能包含 null，暂不清楚从哪产生的
+ * 2. 可能会存在 children 包含当前节点的问题
+ * 3. children 可能包含不存在的节点
+ */
+function fixedTree(tree: TreeModel) {
+    forEach(tree.items, (item) => {
+        if (
+            item.children.find(
+                (i) => i === null || i === item.id || !tree.items[i]
+            )
+        ) {
+            console.log('item.children error', item);
+            tree.items[item.id] = {
+                ...item,
+                children: filter(
+                    item.children,
+                    (cid) => !isNil(cid) && cid !== item.id && !!tree.items[cid]
+                ),
+            };
+        }
+    });
+    return tree;
 }
 
 export class TreeStorePostgreSQL {
@@ -20,7 +48,7 @@ export class TreeStorePostgreSQL {
         });
     }
 
-    async getTree(): Promise<TreeModel> {
+    async get(): Promise<TreeModel> {
         const client = await this.pool.connect();
         try {
             const result = await client.query(
@@ -29,11 +57,12 @@ export class TreeStorePostgreSQL {
             );
 
             if (result.rows.length === 0) {
-                // Return default tree if none exists
-                return DEFAULT_TREE;
+                // Return default tree if none exists and save it
+                return await this.set(DEFAULT_TREE);
             }
 
-            return result.rows[0].data as TreeModel;
+            const tree = result.rows[0].data as TreeModel;
+            return fixedTree(tree);
         } catch (error) {
             this.logger.error('Error getting tree:', error);
             return DEFAULT_TREE;
@@ -42,7 +71,8 @@ export class TreeStorePostgreSQL {
         }
     }
 
-    async putTree(tree: TreeModel): Promise<void> {
+    async set(tree: TreeModel): Promise<TreeModel> {
+        const newTree = fixedTree(tree);
         const client = await this.pool.connect();
         try {
             await client.query(`
@@ -52,9 +82,10 @@ export class TreeStorePostgreSQL {
                 DO UPDATE SET
                     data = EXCLUDED.data,
                     updated_at = NOW()
-            `, [JSON.stringify(tree)]);
+            `, [JSON.stringify(newTree)]);
 
             this.logger.debug('Successfully updated tree data');
+            return newTree;
         } catch (error) {
             this.logger.error('Error updating tree:', error);
             throw error;
@@ -63,116 +94,42 @@ export class TreeStorePostgreSQL {
         }
     }
 
-    async addItem(id: string, parentId: string = ROOT_ID): Promise<void> {
-        const tree = await this.getTree();
-
-        // Add item to tree structure
-        if (!tree.items[id]) {
-            tree.items[id] = {
-                id,
-                children: [],
-            };
-        }
-
-        // Add to parent's children if not already there
-        if (tree.items[parentId] && !tree.items[parentId].children.includes(id)) {
-            tree.items[parentId].children.push(id);
-        }
-
-        await this.putTree(tree);
-        this.logger.debug('Added item to tree:', id, 'parent:', parentId);
+    async addItem(id: string, parentId: string = ROOT_ID): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.addItem(tree, id, parentId));
     }
 
-    async removeItem(id: string): Promise<void> {
-        const tree = await this.getTree();
-
-        // Remove from all parent children arrays
-        Object.values(tree.items).forEach(item => {
-            const index = item.children.indexOf(id);
-            if (index > -1) {
-                item.children.splice(index, 1);
-            }
+    async addItems(ids: string[], parentId: string = ROOT_ID): Promise<TreeModel> {
+        let tree = await this.get();
+        ids.forEach((id) => {
+            tree = TreeActions.addItem(tree, id, parentId);
         });
-
-        // Remove the item itself
-        delete tree.items[id];
-
-        await this.putTree(tree);
-        this.logger.debug('Removed item from tree:', id);
+        return await this.set(tree);
     }
 
-    async moveItem(id: string, newParentId: string, index?: number): Promise<void> {
-        const tree = await this.getTree();
-
-        // Remove from current parent
-        Object.values(tree.items).forEach(item => {
-            const currentIndex = item.children.indexOf(id);
-            if (currentIndex > -1) {
-                item.children.splice(currentIndex, 1);
-            }
-        });
-
-        // Add to new parent
-        if (tree.items[newParentId]) {
-            if (typeof index === 'number') {
-                tree.items[newParentId].children.splice(index, 0, id);
-            } else {
-                tree.items[newParentId].children.push(id);
-            }
-        }
-
-        await this.putTree(tree);
-        this.logger.debug('Moved item in tree:', id, 'to parent:', newParentId, 'at index:', index);
+    async removeItem(id: string): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.removeItem(tree, id));
     }
 
-    async deleteItem(id: string): Promise<void> {
-        const tree = await this.getTree();
-
-        // Recursively collect all children to delete
-        const toDelete = new Set<string>();
-        const collectChildren = (itemId: string) => {
-            toDelete.add(itemId);
-            if (tree.items[itemId]) {
-                tree.items[itemId].children.forEach(childId => {
-                    collectChildren(childId);
-                });
-            }
-        };
-
-        collectChildren(id);
-
-        // Remove all collected items
-        toDelete.forEach(itemId => {
-            // Remove from parent children arrays
-            Object.values(tree.items).forEach(item => {
-                const index = item.children.indexOf(itemId);
-                if (index > -1) {
-                    item.children.splice(index, 1);
-                }
-            });
-
-            // Remove the item itself
-            delete tree.items[itemId];
-        });
-
-        await this.putTree(tree);
-        this.logger.debug('Deleted item and children from tree:', Array.from(toDelete));
+    async moveItem(source: MovePosition, destination: MovePosition): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.moveItem(tree, source, destination));
     }
 
-    async restoreItem(id: string, parentId: string = ROOT_ID): Promise<void> {
-        // This is the same as addItem for our purposes
-        await this.addItem(id, parentId);
-        this.logger.debug('Restored item to tree:', id, 'parent:', parentId);
+    async mutateItem(id: string, data: TreeItemModel): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.mutateItem(tree, id, data));
     }
 
-    async updateItemData(id: string, data: any): Promise<void> {
-        const tree = await this.getTree();
+    async restoreItem(id: string, parentId: string): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.restoreItem(tree, id, parentId));
+    }
 
-        if (tree.items[id]) {
-            tree.items[id].data = data;
-            await this.putTree(tree);
-            this.logger.debug('Updated item data in tree:', id);
-        }
+    async deleteItem(id: string): Promise<TreeModel> {
+        const tree = await this.get();
+        return await this.set(TreeActions.deleteItem(tree, id));
     }
 
     async close(): Promise<void> {
