@@ -19,7 +19,6 @@ const Editor: FC<EditorProps> = ({ readOnly, isPreview }) => {
         onSearchLink,
         onCreateLink,
         onClickLink,
-        onUploadImage,
         onHoverLink,
         onEditorChange,
         backlinks,

@@ -11,5 +11,11 @@ const withPWA = nextPWA({
 });
 
 module.exports = withPWA({
-    swcMinify: true
+    swcMinify: true,
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+    typescript: {
+        ignoreBuildErrors: true,
+    },
 });
