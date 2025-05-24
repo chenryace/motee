@@ -5,6 +5,7 @@ import { TreeModel } from 'libs/shared/tree';
 import { useSession } from 'libs/server/middlewares/session';
 import { applySettings } from 'libs/server/middlewares/settings';
 import { applyAuth, applyRedirectLogin } from 'libs/server/middlewares/auth';
+import { applyTree } from 'libs/server/middlewares/tree';
 import Link from 'next/link';
 import UIState from 'libs/web/state/ui';
 import Router from 'next/router';
@@ -47,6 +48,7 @@ export const getServerSideProps = async (ctx: SSRContext) => {
     await ssr()
         .use(useSession)
         .use(applyAuth)
+        .use(applyTree)
         .use(applyRedirectLogin(ctx.resolvedUrl))
         .use(applyReset)
         .use(applySettings)

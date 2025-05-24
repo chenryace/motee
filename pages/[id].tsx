@@ -3,6 +3,7 @@ import { useSession } from 'libs/server/middlewares/session';
 import { applySettings } from 'libs/server/middlewares/settings';
 import { applyAuth, applyRedirectLogin } from 'libs/server/middlewares/auth';
 import { applyNote } from 'libs/server/middlewares/note';
+import { applyTree } from 'libs/server/middlewares/tree';
 import LayoutPublic from 'components/layout/layout-public';
 import { EditContainer } from 'components/container/edit-container';
 import { PostContainer } from 'components/container/post-container';
@@ -54,6 +55,7 @@ export const getServerSideProps = async (
         .use(useSession)
         .use(applyAuth)
         .use(applyNote(ctx.query.id))
+        .use(applyTree)
         .use(applyRedirectLogin(ctx.resolvedUrl))
         .use(applyReset)
         .use(applySettings)
