@@ -63,12 +63,13 @@ export const EditContainer = () => {
                 const dailyDate = router.query.daily as string;
 
                 if (dailyDate && /^\d{4}-\d{1,2}-\d{1,2}$/.test(dailyDate)) {
-                    // 这是每日笔记，使用日期作为标题
+                    // 这是每日笔记，使用日期作为标题，并添加特殊标记
                     initNote({
                         id,
                         title: dailyDate,
                         content: '\n',
                         pid: settings.daily_root_id,
+                        isDailyNote: true, // 添加每日笔记标记
                     });
                 } else {
                     // 普通新笔记逻辑
