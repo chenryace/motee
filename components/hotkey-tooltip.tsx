@@ -60,7 +60,12 @@ const HotkeyTooltip: FC<{
             const isContentEditable = target.isContentEditable;
 
             // Check if we should handle this event
-            if (!isInputElement && (!isContentEditable || disableOnContentEditable)) {
+            // 在编辑器或输入元素中时，不处理侧栏快捷键
+            const isInEditor = target.closest('.ProseMirror') ||
+                             target.closest('[contenteditable]') ||
+                             isInputElement;
+
+            if (isInEditor && !disableOnContentEditable) {
                 return;
             }
 

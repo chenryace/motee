@@ -86,17 +86,28 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
         }
     };
 
-    // Add keyboard shortcut Ctrl+S / Cmd+S
+    // Add keyboard shortcut Ctrl+S / Cmd+S (借鉴旧项目的实现)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // 只在按下 Ctrl+S 或 Cmd+S 时处理
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                handleSave();
+                const target = e.target as HTMLElement;
+                const isInEditor = target.closest('.ProseMirror') ||
+                                 target.closest('[contenteditable]') ||
+                                 target.closest('textarea') ||
+                                 target.closest('input');
+
+                // 只在编辑器区域或输入元素中响应 Ctrl+S
+                if (isInEditor) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSave();
+                }
             }
         };
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDown, true); // 使用捕获阶段
+        return () => document.removeEventListener('keydown', handleKeyDown, true);
     }, [handleSave]);
 
     const getButtonIcon = () => {
