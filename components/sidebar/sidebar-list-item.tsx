@@ -2,7 +2,7 @@ import { NoteModel } from 'libs/shared/note';
 import Link from 'next/link';
 import { FC, ReactText, MouseEvent, useCallback, useMemo } from 'react';
 import classNames from 'classnames';
-import router, { useRouter } from 'next/router';
+import { useRouter } from 'next/router';
 import HotkeyTooltip from 'components/hotkey-tooltip';
 import IconButton from 'components/icon-button';
 import NoteTreeState from 'libs/web/state/tree';
@@ -46,8 +46,9 @@ const SidebarListItem: FC<{
     ...attrs
 }) => {
     const { t } = useI18n();
-    const { query } = useRouter();
-    const { mutateItem, initLoaded } = NoteTreeState.useContainer();
+    const router = useRouter();
+    const { query } = router;
+    const { mutateItem, initLoaded, genNewId } = NoteTreeState.useContainer();
     const {
         menu: { open, setData, setAnchor },
     } = PortalState.useContainer();
