@@ -6,7 +6,7 @@ import { getPathNoteById } from 'libs/server/note-path';
 import { NoteModel } from 'libs/shared/note';
 import { StoreProvider } from 'libs/server/store';
 import { API } from 'libs/server/middlewares/error';
-import { strCompress } from 'libs/shared/str';
+import { strCompress, strDecompress } from 'libs/shared/str';
 import { ROOT_ID } from 'libs/shared/tree';
 
 export async function getNote(
@@ -84,5 +84,14 @@ export default api()
             meta: metaWithId,
         });
 
-        res.status(204).end();
+        // 返回更新后的笔记对象
+        const updatedNote = {
+            ...metaWithId,
+            content,
+            id: strDecompress(metaWithId.id),
+            date: strDecompress(metaWithId.date),
+            updated_at: new Date().toISOString(),
+        };
+
+        res.json(updatedNote);
     });
