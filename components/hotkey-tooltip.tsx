@@ -50,48 +50,73 @@ const HotkeyTooltip: FC<{
         keyMap.unshift(isMac ? '⌥' : 'alt');
     }
 
-    // Use native keyboard event handling
+    // Use native keyboard event handling (借鉴旧项目的简单实现)
     useEffect(() => {
         if (!keys.length) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement;
-            const isInputElement = ['INPUT', 'TEXTAREA'].includes(target.tagName);
-            const isContentEditable = target.isContentEditable;
 
-            // Check if we should handle this event
-            // 在编辑器或输入元素中时，不处理侧栏快捷键
+            // 检查是否在编辑器或输入元素中
             const isInEditor = target.closest('.ProseMirror') ||
                              target.closest('[contenteditable]') ||
-                             isInputElement;
+                             target.tagName === 'INPUT' ||
+                             target.tagName === 'TEXTAREA';
 
+            // 如果在编辑器中，完全不处理快捷键（除非明确允许）
             if (isInEditor && !disableOnContentEditable) {
                 return;
             }
 
-            // Build the key combination
-            const pressedKeys: string[] = [];
-            if (commandKey && (event.ctrlKey || event.metaKey)) {
-                pressedKeys.push(isMac ? '⌘' : 'ctrl');
-            }
-            if (optionKey && event.altKey) {
-                pressedKeys.push(isMac ? '⌥' : 'alt');
-            }
-            pressedKeys.push(...keys);
+            // 精确匹配键盘组合
+            let matches = true;
 
-            // Check if the pressed combination matches
-            const expectedCombo = keyMap.join('+').toLowerCase();
-            const actualCombo = pressedKeys.join('+').toLowerCase();
+            // 检查修饰键
+            if (commandKey && !(event.ctrlKey || event.metaKey)) {
+                matches = false;
+            }
+            if (!commandKey && (event.ctrlKey || event.metaKey)) {
+                matches = false;
+            }
 
-            if (actualCombo === expectedCombo) {
+            if (optionKey && !event.altKey) {
+                matches = false;
+            }
+            if (!optionKey && event.altKey) {
+                matches = false;
+            }
+
+            // 检查主键
+            if (keys.length === 1) {
+                if (event.key.toLowerCase() !== keys[0].toLowerCase()) {
+                    matches = false;
+                }
+            } else if (keys.length > 1) {
+                // 处理组合键（如 shift+O）
+                const hasShift = keys.includes('shift') || keys.includes('Shift');
+                if (hasShift && !event.shiftKey) {
+                    matches = false;
+                }
+                if (!hasShift && event.shiftKey) {
+                    matches = false;
+                }
+
+                const mainKey = keys.find(k => k.toLowerCase() !== 'shift');
+                if (mainKey && event.key.toLowerCase() !== mainKey.toLowerCase()) {
+                    matches = false;
+                }
+            }
+
+            if (matches) {
                 event.preventDefault();
+                event.stopPropagation();
                 onHotkey();
             }
         };
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [keys, commandKey, optionKey, onHotkey, disableOnContentEditable, isMac, keyMap]);
+        document.addEventListener('keydown', handleKeyDown, true); // 使用捕获阶段
+        return () => document.removeEventListener('keydown', handleKeyDown, true);
+    }, [keys, commandKey, optionKey, onHotkey, disableOnContentEditable]);
 
     return (
         <Tooltip
