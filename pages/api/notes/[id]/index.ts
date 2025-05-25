@@ -61,21 +61,27 @@ export default api()
         const notePath = getPathNoteById(id);
         const oldMeta = await req.state.store.getObjectMeta(notePath);
 
-        if (oldMeta) {
-            oldMeta['date'] = strCompress(new Date().toISOString());
+        // 确保metadata中包含ID（用于PostgreSQL存储）
+        const metaWithId = {
+            ...oldMeta,
+            id: strCompress(id), // 添加ID到metadata中
+        };
+
+        if (metaWithId) {
+            metaWithId['date'] = strCompress(new Date().toISOString());
         }
 
         // Empty content may be a misoperation
         if (!content || content.trim() === '\\') {
             await req.state.store.copyObject(notePath, notePath + '.bak', {
-                meta: oldMeta,
+                meta: metaWithId,
                 contentType: 'text/markdown',
             });
         }
 
         await req.state.store.putObject(notePath, content, {
             contentType: 'text/markdown',
-            meta: oldMeta,
+            meta: metaWithId,
         });
 
         res.status(204).end();
