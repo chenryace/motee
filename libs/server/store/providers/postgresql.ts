@@ -160,11 +160,12 @@ export class StorePostgreSQL extends StoreProvider {
         meta?: { [key: string]: string };
         contentType?: string;
         buffer?: Buffer;
+        updated_at?: string;
     }> {
         const client = await this.pool.connect();
         try {
             const result = await client.query(
-                'SELECT content, metadata, content_type FROM notes WHERE path = $1',
+                'SELECT content, metadata, content_type, updated_at FROM notes WHERE path = $1',
                 [this.getPath(path)]
             );
 
@@ -177,6 +178,7 @@ export class StorePostgreSQL extends StoreProvider {
                 content: row.content,
                 meta: row.metadata || {},
                 contentType: row.content_type,
+                updated_at: row.updated_at ? row.updated_at.toISOString() : undefined,
             };
         } catch (error) {
             this.logger.error('Error getting object and metadata:', error);

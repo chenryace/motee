@@ -13,7 +13,7 @@ export async function getNote(
     store: StoreProvider,
     id: string
 ): Promise<NoteModel> {
-    const { content, meta } = await store.getObjectAndMeta(getPathNoteById(id));
+    const { content, meta, updated_at } = await store.getObjectAndMeta(getPathNoteById(id));
 
     if (!content && !meta) {
         throw API.NOT_FOUND.throw();
@@ -25,6 +25,7 @@ export async function getNote(
         id,
         content: content || '\n',
         ...jsonMeta,
+        updated_at, // 添加真实的更新时间
     } as NoteModel;
 }
 
