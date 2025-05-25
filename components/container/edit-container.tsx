@@ -32,14 +32,24 @@ export const EditContainer = () => {
 
     const loadNoteById = useCallback(
         async (id: string) => {
-            // daily notes
+            // daily notes - 使用initNote创建，ID由系统生成，标题为日期
             if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(id)) {
-                await findOrCreateNote(id, {
-                    id,
-                    title: id,
-                    content: '\n',
-                    pid: settings.daily_root_id,
-                });
+                // 先检查是否已存在以该日期为标题的笔记
+                try {
+                    const existingNote = await fetchNote(id);
+                    if (existingNote) {
+                        // 已存在，直接使用
+                        return;
+                    }
+                } catch (e) {
+                    // 不存在，创建新的每日笔记
+                    // 生成新ID，但标题使用日期
+                    const newId = genNewId();
+
+                    // 重定向到新ID，但保持每日笔记的特性
+                    await router.replace(`/${newId}?new&daily=${id}`, undefined, { shallow: true });
+                    return;
+                }
             } else if (id === 'new') {
                 const url = `/${genNewId()}?new` + (pid ? `&pid=${pid}` : '');
 
@@ -59,20 +69,33 @@ export const EditContainer = () => {
                     }
                 }
             } else {
-                // 借鉴旧项目：简单直接的新建笔记逻辑
-                const cachedNote = await noteCache.getItem(id);
-                if (cachedNote) {
-                    initNote(cachedNote);
-                    return;
-                }
+                // 检查是否是每日笔记（通过daily参数）
+                const dailyDate = router.query.daily as string;
 
-                // 借鉴旧项目：直接初始化本地笔记，简单有效
-                initNote({
-                    id,
-                    title: '',
-                    content: '\n',
-                    pid: pid || 'root'
-                });
+                if (dailyDate && /^\d{4}-\d{1,2}-\d{1,2}$/.test(dailyDate)) {
+                    // 这是每日笔记，使用日期作为标题
+                    initNote({
+                        id,
+                        title: dailyDate,
+                        content: '\n',
+                        pid: settings.daily_root_id,
+                    });
+                } else {
+                    // 普通新笔记逻辑
+                    const cachedNote = await noteCache.getItem(id);
+                    if (cachedNote) {
+                        initNote(cachedNote);
+                        return;
+                    }
+
+                    // 借鉴旧项目：直接初始化本地笔记，简单有效
+                    initNote({
+                        id,
+                        title: '',
+                        content: '\n',
+                        pid: pid || 'root'
+                    });
+                }
             }
 
             if (!isNew && id !== 'new') {

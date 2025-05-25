@@ -1,6 +1,12 @@
 import { FC, useState, useEffect } from 'react';
 import { Button, Chip } from '@material-ui/core';
-import { DocumentIcon, UploadIcon, CheckIcon, ExclamationIcon } from '@heroicons/react/outline';
+import {
+    DocumentIcon,
+    UploadIcon,
+    CheckIcon,
+    XIcon,
+    EyeIcon
+} from '@heroicons/react/outline';
 import EditorState from 'libs/web/state/editor';
 import noteCache from 'libs/web/cache/note';
 import { useRouter } from 'next/router';
@@ -24,6 +30,15 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
         const checkSyncStatus = async () => {
             if (!note?.id) {
                 setSyncStatus('synced');
+                return;
+            }
+
+            // 检查是否在预览模式
+            const isPreviewMode = router.query.preview === 'true' ||
+                                document.querySelector('.ProseMirror')?.getAttribute('contenteditable') === 'false';
+
+            if (isPreviewMode) {
+                setSyncStatus('viewing');
                 return;
             }
 
@@ -112,12 +127,14 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
 
     const getButtonIcon = () => {
         switch (syncStatus) {
+            case 'viewing':
+                return <EyeIcon className="w-4 h-4 animate-pulse" />;
             case 'syncing':
                 return <UploadIcon className="w-4 h-4 animate-pulse" />;
             case 'synced':
-                return <CheckIcon className="w-4 h-4 text-green-500" />;
+                return <CheckIcon className="w-4 h-4" />;
             case 'error':
-                return <ExclamationIcon className="w-4 h-4 text-red-500" />;
+                return <XIcon className="w-4 h-4" />;
             case 'local':
             default:
                 return <DocumentIcon className="w-4 h-4" />;
@@ -126,61 +143,55 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
 
     const getButtonText = () => {
         switch (syncStatus) {
+            case 'viewing':
+                return 'Viewing';
             case 'syncing':
                 return 'Syncing...';
             case 'synced':
-                return 'Synced';
+                return 'Updated';
             case 'error':
-                return 'Retry';
+                return 'X Retry';
             case 'local':
-                return 'Save to Server';
+                return 'Save';
             default:
                 return 'Save';
         }
     };
 
-    const getStatusColor = () => {
+    const getButtonStyle = () => {
         switch (syncStatus) {
+            case 'viewing':
+                return 'bg-gray-600 text-white hover:bg-gray-700';
+            case 'syncing':
+                return 'bg-blue-500 text-white hover:bg-blue-600';
             case 'synced':
-                return 'primary';
-            case 'local':
-                return 'secondary';
+                return 'bg-blue-500 text-white hover:bg-blue-600';
             case 'error':
-                return 'secondary';
+                return 'bg-red-500 text-white hover:bg-red-600';
+            case 'local':
+                return 'bg-blue-400 text-white hover:bg-blue-500';
             default:
-                return 'primary';
+                return 'bg-blue-400 text-white hover:bg-blue-500';
         }
     };
 
     return (
         <div className="flex items-center gap-2">
-            <Button
-                variant="contained"
-                color={getStatusColor()}
-                startIcon={getButtonIcon()}
-                onClick={handleSave}
-                disabled={isSaving}
-                className={className}
-                size="small"
-            >
-                {getButtonText()}
-            </Button>
-
-            {/* Status indicator */}
-            {syncStatus === 'local' && (
-                <Chip
-                    size="small"
-                    label="Local changes"
-                    color="secondary"
-                    variant="outlined"
-                />
-            )}
-
+            {/* 显示上次保存时间 */}
             {lastSyncTime && syncStatus === 'synced' && (
                 <span className="text-xs text-gray-500">
                     Last saved: {lastSyncTime.toLocaleTimeString()}
                 </span>
             )}
+
+            <button
+                onClick={handleSave}
+                disabled={isSaving || syncStatus === 'viewing'}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${getButtonStyle()} ${className || ''}`}
+            >
+                {getButtonIcon()}
+                {getButtonText()}
+            </button>
         </div>
     );
 };
