@@ -210,9 +210,15 @@ const useEditor = (initNote?: NoteModel) => {
         (value: () => string): void => {
             const content = value();
 
-            // Extract title from content (first line)
-            const lines = content.split('\n');
-            const title = lines[0]?.replace(/^#\s*/, '') || 'Untitled';
+            let title: string;
+            if (note?.isDailyNote) {
+                // 每日笔记：保持原标题不变（日期格式）
+                title = note.title;
+            } else {
+                // 普通笔记：从内容提取标题（第一行）
+                const lines = content.split('\n');
+                title = lines[0]?.replace(/^#\s*/, '') || 'Untitled';
+            }
 
             // Save to IndexedDB immediately for local persistence
             saveToIndexedDB({
@@ -221,7 +227,7 @@ const useEditor = (initNote?: NoteModel) => {
                 updated_at: new Date().toISOString()
             })?.catch((v) => console.error('Error whilst saving to IndexedDB: %O', v));
         },
-        [saveToIndexedDB]
+        [saveToIndexedDB, note?.isDailyNote, note?.title]
     );
 
     // Function to handle title changes specifically

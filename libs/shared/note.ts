@@ -14,6 +14,8 @@ export interface NoteModel {
     shared: NOTE_SHARED;
     pinned: NOTE_PINNED;
     editorsize: EDITOR_SIZE | null;
+    isDailyNote?: boolean; // 标记是否为每日笔记
+    updated_at?: string; // 添加更新时间字段
 }
 
 /**
