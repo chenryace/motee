@@ -48,15 +48,17 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
                 return;
             }
 
+            // 始终设置上次保存时间（如果笔记有更新时间）
+            if (note.updated_at) {
+                setLastSyncTime(new Date(note.updated_at));
+            }
+
             try {
                 // 借鉴旧项目：检查本地缓存是否有更新
                 const localNote = await noteCache.getItem(note.id);
 
                 if (!localNote) {
                     setSyncStatus('synced');
-                    if (note.updated_at) {
-                        setLastSyncTime(new Date(note.updated_at));
-                    }
                     return;
                 }
 
@@ -69,7 +71,6 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
                         setSyncStatus('local');
                     } else {
                         setSyncStatus('synced');
-                        setLastSyncTime(serverTime);
                     }
                 } else {
                     setSyncStatus('local');
@@ -158,40 +159,39 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
         }
     };
 
-    const getButtonStyle = () => {
+    const getStatusColor = () => {
         switch (syncStatus) {
-            case 'viewing':
-                return 'bg-gray-600 text-white hover:bg-gray-700';
-            case 'syncing':
-                return 'bg-blue-500 text-white hover:bg-blue-600';
             case 'synced':
-                return 'bg-blue-500 text-white hover:bg-blue-600';
-            case 'error':
-                return 'bg-red-500 text-white hover:bg-red-600';
+                return 'primary';
             case 'local':
-                return 'bg-blue-400 text-white hover:bg-blue-500';
+                return 'secondary';
+            case 'error':
+                return 'secondary';
             default:
-                return 'bg-blue-400 text-white hover:bg-blue-500';
+                return 'primary';
         }
     };
 
     return (
         <div className="flex items-center gap-2">
-            {/* 显示上次保存时间 */}
-            {lastSyncTime && syncStatus === 'synced' && (
+            {/* 始终显示上次保存时间（如果存在） */}
+            {lastSyncTime && (
                 <span className="text-xs text-gray-500">
                     Last saved: {lastSyncTime.toLocaleTimeString()}
                 </span>
             )}
 
-            <button
+            <Button
+                variant="contained"
+                color={getStatusColor()}
+                startIcon={getButtonIcon()}
                 onClick={handleSave}
-                disabled={isSaving || syncStatus === 'viewing'}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${getButtonStyle()} ${className || ''}`}
+                disabled={isSaving}
+                className={className}
+                size="small"
             >
-                {getButtonIcon()}
                 {getButtonText()}
-            </button>
+            </Button>
         </div>
     );
 };

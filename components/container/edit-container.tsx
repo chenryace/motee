@@ -34,22 +34,12 @@ export const EditContainer = () => {
         async (id: string) => {
             // daily notes - 使用initNote创建，ID由系统生成，标题为日期
             if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(id)) {
-                // 先检查是否已存在以该日期为标题的笔记
-                try {
-                    const existingNote = await fetchNote(id);
-                    if (existingNote) {
-                        // 已存在，直接使用
-                        return;
-                    }
-                } catch (e) {
-                    // 不存在，创建新的每日笔记
-                    // 生成新ID，但标题使用日期
-                    const newId = genNewId();
+                // 对于日期格式的ID，直接创建新的每日笔记
+                const newId = genNewId();
 
-                    // 重定向到新ID，但保持每日笔记的特性
-                    await router.replace(`/${newId}?new&daily=${id}`, undefined, { shallow: true });
-                    return;
-                }
+                // 重定向到新ID，但保持每日笔记的特性
+                await router.replace(`/${newId}?new&daily=${id}`, undefined, { shallow: true });
+                return;
             } else if (id === 'new') {
                 const url = `/${genNewId()}?new` + (pid ? `&pid=${pid}` : '');
 
