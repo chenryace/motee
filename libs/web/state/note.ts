@@ -151,17 +151,31 @@ const useNote = (initData?: NoteModel) => {
                 toast('Not found id', 'error');
                 return;
             }
+
+            // 获取最新的本地数据（包括内容）
+            const localNote = await noteCache.getItem(note.id);
+            const noteToUpdate = localNote || note;
+
+            const updateData = {
+                ...data,
+                content: data.content || noteToUpdate.content, // 确保包含内容
+            };
+
             const newNote = {
-                ...note,
+                ...noteToUpdate,
                 ...data,
             };
-            delete newNote.content;
+
             setNote(newNote);
             await mutateItem(newNote.id, {
                 data: newNote,
             });
-            await mutate(note.id, data);
-            await noteCache.mutateItem(note.id, data);
+
+            // 发送包含内容的更新请求
+            const result = await mutate(note.id, updateData);
+            await noteCache.mutateItem(note.id, updateData);
+
+            return result;
         },
         [abort, toast, note, mutate, mutateItem]
     );
