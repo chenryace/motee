@@ -7,7 +7,7 @@ import {
     XIcon,
     EyeIcon
 } from '@heroicons/react/outline';
-import EditorState from 'libs/web/state/editor';
+import TiptapEditorState from 'libs/web/state/tiptap-editor';
 import noteCache from 'libs/web/cache/note';
 import { useRouter } from 'next/router';
 import { has } from 'lodash';
@@ -19,7 +19,7 @@ interface SaveButtonProps {
 type SyncStatus = 'synced' | 'local' | 'syncing' | 'error';
 
 const SaveButton: FC<SaveButtonProps> = ({ className }) => {
-    const { syncToServer, note } = EditorState.useContainer();
+    const { syncToServer, note } = TiptapEditorState.useContainer();
     const [isSaving, setIsSaving] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -189,6 +189,7 @@ const SaveButton: FC<SaveButtonProps> = ({ className }) => {
                 disabled={isSaving}
                 className={className}
                 size="small"
+                data-save-button="true"
             >
                 {getButtonText()}
             </Button>

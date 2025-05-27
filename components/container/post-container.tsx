@@ -5,7 +5,8 @@ import UIState from 'libs/web/state/ui';
 import InnerHTML from 'dangerously-set-html-content';
 import { NoteModel } from 'libs/shared/note';
 import pupa from 'pupa';
-import MainEditor from 'components/editor/main-editor';
+import TiptapMainEditor from 'components/editor/tiptap-main-editor';
+import TiptapEditorState from 'libs/web/state/tiptap-editor';
 
 const MAX_WIDTH = 900;
 
@@ -30,12 +31,14 @@ export const PostContainer: FC<{
 
     return (
         <>
-            <MainEditor
-                isPreview={isPreview}
-                note={note}
-                className={className}
-                readOnly
-            />
+            <TiptapEditorState.Provider>
+                <TiptapMainEditor
+                    isPreview={isPreview}
+                    note={note}
+                    className={className}
+                    readOnly
+                />
+            </TiptapEditorState.Provider>
             {isPreview ? null : (
                 <>
                     {injection ? (

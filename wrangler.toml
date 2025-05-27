@@ -1,0 +1,31 @@
+# Cloudflare Pages 配置文件
+name = "matea"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages 特定配置
+pages_build_output_dir = ".vercel/output/static"
+
+# 环境变量 (生产环境)
+[env.production]
+vars = { NODE_ENV = "production" }
+
+# 环境变量 (预览环境)  
+[env.preview]
+vars = { NODE_ENV = "development" }
+
+# 本地开发配置
+[vars]
+NODE_ENV = "development"
+
+# KV 命名空间 (可选，未来扩展用)
+# [[kv_namespaces]]
+# binding = "NOTES_KV"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"
+
+# D1 数据库 (可选，未来扩展用)
+# [[d1_databases]]
+# binding = "NOTES_DB"
+# database_name = "matea-notes"
+# database_id = "your-d1-database-id"

@@ -102,7 +102,8 @@ const ButtonTrash = () => {
 
 const ButtonDailyNotes = () => {
     const { t } = useI18n();
-    const href = `/${dayjs().format('YYYY-MM-DD')}`;
+    const today = dayjs().format('YYYY-MM-DD');
+    const href = `/${today}?new=true&daily=${today}`;
     const router = useRouter();
 
     return (

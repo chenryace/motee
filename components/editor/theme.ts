@@ -1,16 +1,13 @@
 import { useTheme } from 'next-themes';
-import { theme } from '@notea/rich-markdown-editor';
-import { light, dark } from '@notea/rich-markdown-editor/dist/styles/theme';
 
-export const darkTheme: typeof theme = {
-    ...dark,
+// Simple theme configuration for Tiptap editor
+export const darkTheme = {
     background: 'inherit',
     text: 'inherit',
     fontFamily: 'inherit',
 };
 
-export const lightTheme: typeof theme = {
-    ...light,
+export const lightTheme = {
     background: 'inherit',
     text: 'inherit',
     fontFamily: 'inherit',

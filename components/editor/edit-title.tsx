@@ -10,10 +10,10 @@ import {
     useMemo,
     ChangeEvent,
 } from 'react';
-import EditorState from 'libs/web/state/editor';
+import TiptapEditorState from 'libs/web/state/tiptap-editor';
 
 const EditTitle: FC<{ readOnly?: boolean }> = ({ readOnly }) => {
-    const { editorEl, saveToIndexedDB, note } = EditorState.useContainer();
+    const { editorEl, saveToIndexedDB, note } = TiptapEditorState.useContainer();
     const router = useRouter();
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const onInputTitle = useCallback(

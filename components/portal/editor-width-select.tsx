@@ -3,7 +3,6 @@ import useI18n from 'libs/web/hooks/use-i18n';
 import PortalState from 'libs/web/state/portal';
 import { Menu, MenuItem } from '@material-ui/core';
 import { EDITOR_SIZE } from 'libs/shared/meta';
-import NoteState from 'libs/web/state/note';
 import UIState from 'libs/web/state/ui';
 
 interface EditorWidthSelectItem {
@@ -17,9 +16,8 @@ const EditorWidthSelect: FC = () => {
         editorWidthSelect: { close, anchor, data, visible },
     } = PortalState.useContainer();
     const {
-        settings: { settings },
+        settings: { settings, updateSettings },
     } = UIState.useContainer();
-    const { mutateNote } = NoteState.useContainer();
 
     const items: Array<EditorWidthSelectItem> = [
         {
@@ -36,17 +34,19 @@ const EditorWidthSelect: FC = () => {
         }
     ];
 
-    const setTo = (width: EDITOR_SIZE) => {
+    const setTo = async (width: EDITOR_SIZE) => {
         close();
-        if (data?.id) {
-            mutateNote(data.id, {
-                editorsize: width
-            })
-                .catch((v) => console.error("Error whilst switching editor size", v));
+        try {
+            // 更新全局设置，与设置页面保持一致
+            await updateSettings({ editorsize: width });
+            // 刷新页面以应用新的宽度设置
+            window.location.reload();
+        } catch (error) {
+            console.error("Error whilst switching editor size", error);
         }
     };
 
-    const editorWidth = data?.editorsize ?? settings.editorsize;
+    const editorWidth = settings.editorsize;
 
     return (
         <Menu

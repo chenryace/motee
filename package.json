@@ -10,9 +10,12 @@
         "type-check": "tsc --pretty --noEmit",
         "format": "prettier --write .",
         "lint": "eslint . --ext ts --ext tsx --ext js",
-
         "build:i18n": "node scripts/extract-i18n",
-        "test": "jest"
+        "test": "jest",
+        "pages:build": "node scripts/build-cloudflare.js",
+        "pages:build:official": "npx @cloudflare/next-on-pages",
+        "pages:dev": "npx wrangler pages dev .vercel/output/static --compatibility-date=2024-01-15 --compatibility-flags=nodejs_compat",
+        "pages:deploy": "npx wrangler pages deploy .vercel/output/static"
     },
     "repository": {
         "type": "git",
@@ -36,7 +39,17 @@
         "@material-ui/core": "^4.12.3",
         "@material-ui/lab": "^4.0.0-alpha.60",
         "@notea/headway-widget": "^0.0.5-alpha",
-        "@notea/rich-markdown-editor": "11.22.0",
+        "@tiptap/core": "^2.12.0",
+        "@tiptap/extension-highlight": "^2.12.0",
+        "@tiptap/extension-image": "^2.12.0",
+        "@tiptap/extension-link": "^2.12.0",
+        "@tiptap/extension-placeholder": "^2.12.0",
+        "@tiptap/extension-typography": "^2.12.0",
+        "@tiptap/extension-underline": "^2.12.0",
+        "@tiptap/pm": "^2.12.0",
+        "@tiptap/react": "^2.12.0",
+        "@tiptap/starter-kit": "^2.12.0",
+        "@tiptap/suggestion": "^2.12.0",
         "adm-zip": "^0.5.5",
         "classnames": "^2.2.6",
         "csrf": "^3.1.0",
@@ -50,6 +63,7 @@
         "localforage": "^1.9.0",
         "lodash": "^4.17.21",
         "lzutf8": "^0.6.0",
+        "markdown-it": "^14.1.0",
         "markdown-link-extractor": "^4.0.1",
         "md5": "^2.3.0",
         "nanoid": "^3.1.22",
@@ -63,7 +77,6 @@
         "pg": "^8.8.0",
         "pino": "^8.7.0",
         "pino-pretty": "^9.1.1",
-        "prosemirror-inputrules": "^1.1.3",
         "pupa": "^2.1.1",
         "qss": "^2.0.3",
         "react": "^17.0.2",
@@ -74,12 +87,14 @@
         "remove-markdown": "^0.3.0",
         "rosetta": "^1.1.0",
         "styled-components": "^5.2.1",
+        "tippy.js": "^6.3.7",
         "ua-parser-js": "^0.7.24",
         "unfurl.js": "^5.3.0",
         "unstated-next": "^1.1.0",
         "use-debounce": "^5.2.1"
     },
     "devDependencies": {
+        "@cloudflare/next-on-pages": "^1.13.12",
         "@tailwindcss/typography": "^0.4.0",
         "@types/adm-zip": "^0.4.34",
         "@types/classnames": "^2.2.11",
@@ -87,10 +102,10 @@
         "@types/jest": "^27.0.1",
         "@types/js-yaml": "^4.0.5",
         "@types/lodash": "^4.14.168",
+        "@types/markdown-it": "^14.1.2",
         "@types/md5": "^2.3.0",
         "@types/node": "^12.12.21",
         "@types/pg": "^8.6.5",
-        "@types/prosemirror-inputrules": "^1.0.4",
         "@types/react": "^17.0.2",
         "@types/react-dom": "^17.0.8",
         "@types/supertest": "^2.0.11",
@@ -118,13 +133,13 @@
         "react-dom": "^17.0.2",
         "supertest": "^6.1.6",
         "tailwindcss": "^2.0.3",
-        "typescript": "^4.3.4"
+        "typescript": "^4.3.4",
+        "wrangler": "^4.16.1"
     },
     "resolutions": {
         "lodash": "^4.17.21",
         "refractor": "^3.4.0",
-        "@types/react": "17.0.39",
-        "prosemirror-model": "1.16.1"
+        "@types/react": "17.0.39"
     },
     "license": "MIT"
 }
