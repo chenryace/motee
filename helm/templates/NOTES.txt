@@ -1,3 +1,0 @@
-🎉 Notea has been installed!
-
-📎 Please check the service at https://{{ .Values.host }}
