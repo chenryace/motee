@@ -1,7 +1,10 @@
 import { api } from 'libs/server/connect';
 import { useAuth } from 'libs/server/middlewares/auth';
 import { useStore } from 'libs/server/middlewares/store';
-import TreeActions from 'libs/shared/tree';
+import TreeActions, { TreeModel, ROOT_ID } from 'libs/shared/tree';
+import { StoreProvider } from 'libs/server/store';
+import { getPathNoteById } from 'libs/server/note-path';
+import { metaToJson } from 'libs/server/meta';
 
 // Helper function to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -11,6 +14,51 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
             setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
         )
     ]);
+}
+
+// 为树结构添加笔记元数据
+async function enrichTreeWithMetadata(tree: TreeModel, store: StoreProvider): Promise<TreeModel> {
+    const enrichedTree = { ...tree };
+
+    // 并行获取所有笔记的元数据
+    const noteIds = Object.keys(tree.items).filter(id => id !== ROOT_ID);
+    console.log(`📊 Enriching ${noteIds.length} notes with metadata...`);
+
+    const metadataPromises = noteIds.map(async (noteId) => {
+        try {
+            const { meta, updated_at } = await store.getObjectAndMeta(getPathNoteById(noteId));
+            if (meta) {
+                const jsonMeta = metaToJson(meta);
+                return {
+                    id: noteId,
+                    metadata: {
+                        title: jsonMeta.title || '',
+                        updated_at: updated_at || jsonMeta.date || new Date().toISOString(),
+                        deleted: jsonMeta.deleted,
+                        pinned: jsonMeta.pinned,
+                        shared: jsonMeta.shared,
+                        pid: jsonMeta.pid,
+                    }
+                };
+            }
+            return null;
+        } catch (error) {
+            console.warn(`⚠️ Failed to get metadata for note ${noteId}:`, error);
+            return null;
+        }
+    });
+
+    const metadataResults = await Promise.all(metadataPromises);
+
+    // 将元数据添加到树结构中
+    metadataResults.forEach(result => {
+        if (result && enrichedTree.items[result.id]) {
+            enrichedTree.items[result.id].data = result.metadata as any;
+        }
+    });
+
+    console.log(`✅ Successfully enriched tree with metadata`);
+    return enrichedTree;
 }
 
 export default api()
@@ -26,8 +74,13 @@ export default api()
                 8000
             );
 
-            console.log('Tree data retrieved, cleaning...');
-            const cleanedTree = TreeActions.cleanTreeModel(tree);
+            console.log('Tree data retrieved, enriching with note metadata...');
+
+            // 为树结构添加笔记元数据
+            const enrichedTree = await enrichTreeWithMetadata(tree, req.state.store);
+
+            console.log('Tree data enriched, cleaning...');
+            const cleanedTree = TreeActions.cleanTreeModel(enrichedTree);
 
             const style = req.query['style'];
             switch (style) {

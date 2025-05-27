@@ -18,10 +18,12 @@ export const createNote = async (note: NoteModel, state: ServerState) => {
         noteId = genId();
     }
 
+    const currentTime = new Date().toISOString();
     const metaWithModel = {
         ...meta,
         id: noteId, // 使用确定的ID
-        date: note.date ?? new Date().toISOString(),
+        date: note.date ?? currentTime,
+        updated_at: currentTime, // ✅ 确保包含 updated_at 字段
     };
     const metaData = jsonToMeta(metaWithModel);
 
@@ -30,5 +32,11 @@ export const createNote = async (note: NoteModel, state: ServerState) => {
         meta: metaData,
     });
 
-    return metaWithModel as NoteModel;
+    // ✅ 返回包含完整字段的笔记数据
+    const completeNote = {
+        ...metaWithModel,
+        content, // 确保包含内容
+    };
+
+    return completeNote as NoteModel;
 };

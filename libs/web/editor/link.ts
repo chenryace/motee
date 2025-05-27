@@ -1,7 +1,7 @@
-import RichMarkdownEditor from '@notea/rich-markdown-editor';
+// This file is kept for backward compatibility but is no longer used with Tiptap editor
 import type { Mark } from 'prosemirror-model';
 
-type Node = RichMarkdownEditor['view']['state']['doc'];
+type Node = any; // Generic type for backward compatibility
 
 /**
  * From https://github.com/outline/rich-markdown-editor/blob/3540af9f811a687c46ea82e0274a6286181da4f2/src/commands/createAndInsertLink.ts#L5-L33

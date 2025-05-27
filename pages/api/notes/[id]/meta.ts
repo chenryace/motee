@@ -31,8 +31,18 @@ export default api()
             }
         }
 
-        await req.state.store.copyObject(notePath, notePath, {
-            meta,
+        // 获取现有内容
+        const existingContent = await req.state.store.getObject(notePath);
+
+        // 确保metadata中包含ID（用于PostgreSQL存储）
+        const metaWithId = {
+            ...meta,
+            id: id, // 添加ID到metadata中
+        };
+
+        // 使用 putObject 来正确更新 PostgreSQL 中的 metadata
+        await req.state.store.putObject(notePath, existingContent || '\n', {
+            meta: metaWithId,
             contentType: 'text/markdown',
         });
 

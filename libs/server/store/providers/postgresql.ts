@@ -34,9 +34,10 @@ export class StorePostgreSQL extends StoreProvider {
         this.pool = new Pool({
             connectionString: config.connectionString,
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-            max: 1, // Vercel serverless functions work better with fewer connections
-            idleTimeoutMillis: 10000,
-            connectionTimeoutMillis: 10000,
+            max: 3, // 稍微增加连接数以提高并发性能
+            idleTimeoutMillis: 30000, // 增加空闲超时
+            connectionTimeoutMillis: 5000, // 减少连接超时
+            statement_timeout: 10000, // 添加语句超时
         });
     }
 
@@ -70,12 +71,8 @@ export class StorePostgreSQL extends StoreProvider {
                 );
             `);
 
-            // Create indexes
-            await client.query(`
-                CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(path);
-                CREATE INDEX IF NOT EXISTS idx_notes_metadata ON notes USING GIN(metadata);
-                CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at);
-            `);
+            // Create performance indexes
+            await this.createPerformanceIndexes(client);
 
             this.tablesInitialized = true;
             this.logger.info('Database tables initialized successfully');
@@ -87,7 +84,43 @@ export class StorePostgreSQL extends StoreProvider {
         }
     }
 
-    async getSignUrl(path: string, expires = 600): Promise<string | null> {
+    private async createPerformanceIndexes(client: any): Promise<void> {
+        const indexes = [
+            // 基础查询索引
+            'CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(path)',
+            'CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)',
+            'CREATE INDEX IF NOT EXISTS idx_notes_id ON notes(id)',
+
+            // 元数据查询索引（用于树结构和搜索）
+            'CREATE INDEX IF NOT EXISTS idx_notes_metadata_gin ON notes USING GIN(metadata)',
+
+            // 特定元数据字段索引（提升常用查询性能）
+            'CREATE INDEX IF NOT EXISTS idx_notes_metadata_pid ON notes((metadata->>\'pid\'))',
+            'CREATE INDEX IF NOT EXISTS idx_notes_metadata_title ON notes((metadata->>\'title\'))',
+
+            // 每日笔记查询索引
+            'CREATE INDEX IF NOT EXISTS idx_notes_daily ON notes((metadata->>\'isDailyNote\')) WHERE metadata->>\'isDailyNote\' = \'true\'',
+
+            // 内容搜索索引（全文搜索）
+            'CREATE INDEX IF NOT EXISTS idx_notes_content_search ON notes USING GIN(to_tsvector(\'english\', COALESCE(content, \'\')))',
+
+            // 树结构查询索引
+            'CREATE INDEX IF NOT EXISTS idx_tree_data_updated_at ON tree_data(updated_at DESC)',
+        ];
+
+        for (const indexQuery of indexes) {
+            try {
+                await client.query(indexQuery);
+                const indexName = indexQuery.match(/idx_\w+/)?.[0] || 'unknown';
+                this.logger.debug('Created/verified index:', indexName);
+            } catch (error) {
+                // 索引可能已存在或有其他问题，记录但不中断初始化
+                this.logger.warn('Index creation warning:', error instanceof Error ? error.message : String(error));
+            }
+        }
+    }
+
+    async getSignUrl(_path: string, _expires = 600): Promise<string | null> {
         // PostgreSQL doesn't support signed URLs like S3
         // Return null to indicate this feature is not available
         return null;
@@ -110,7 +143,7 @@ export class StorePostgreSQL extends StoreProvider {
         }
     }
 
-    async getObject(path: string, isCompressed = false): Promise<string | undefined> {
+    async getObject(path: string, _isCompressed = false): Promise<string | undefined> {
         const client = await this.pool.connect();
         try {
             const result = await client.query(
@@ -154,7 +187,7 @@ export class StorePostgreSQL extends StoreProvider {
 
     async getObjectAndMeta(
         path: string,
-        isCompressed = false
+        _isCompressed = false
     ): Promise<{
         content?: string;
         meta?: { [key: string]: string };
@@ -192,7 +225,7 @@ export class StorePostgreSQL extends StoreProvider {
         path: string,
         raw: string | Buffer,
         options?: ObjectOptions,
-        isCompressed?: boolean
+        _isCompressed?: boolean
     ): Promise<void> {
         await this.ensureTablesInitialized();
         const client = await this.pool.connect();
